@@ -1,0 +1,141 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using UnityEngine;
+
+namespace MazeGenerator_DLL
+{
+    public class MazeRenderer : MonoBehaviour
+    {
+        public int width {get; set; }
+        public int height { get; set; }
+        public float size { get; set; }
+        public Transform wallPrefab { get; set; }
+        public Transform floorPrefab { get; set; }
+        public Transform coinPrefab { get; set; }
+        public Transform itemPrefab { get; set; }
+        public Transform enemyPrefab { get; set; }
+        public Vector3 startingPos { get; set; }
+        List<Vector3> positions;
+        List<Vector3> randomPositions;
+        public int coinAmountMax { get; set; }
+        public int enemyAmountMax { get; set; }
+        public int itemAmountMax { get; set; }
+
+        public void DrawMaze()
+        {
+            //create and draw maze
+            MazeState[,] maze = MazeGenerator.GenerateMaze(width, height);
+            positions = new List<Vector3>();
+            randomPositions = new List<Vector3>();
+            Draw(maze);
+            startingPos = new Vector3((-width / 2) * size, 0, (-height / 2) * size);
+            SpawnRandom();
+
+            nodeDiameter = nodeRadius * 2;
+        }
+
+        void Draw(MazeState[,] maze)
+        {
+            //Maze//
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    var cell = maze[i, j];
+                    var position = new Vector3((-width / 2 + i) * size, 0, (-height / 2 + j) * size); //middle of maze
+                    
+                    //always keep the north wall free and prevent adding starting position to positions list(stops objects from spawning in starting position)
+                    if(position != startingPos)
+                    {
+                        positions.Add(position);
+
+                        //if cell is wall up instantiate top wall at scale and size
+                        if (cell.HasFlag(MazeState.NORTH))
+                        {
+                            var northWall = Instantiate(wallPrefab, transform) as Transform;
+                            northWall.position = position + new Vector3(0, 0, size / 2);
+                            northWall.localScale = new Vector3(size, size / 2, northWall.localScale.z);
+                            northWall.name = "North Wall" + i + "," + j;
+                        }
+                    }
+
+                    if (position != new Vector3(-10, 0, 0))
+                    {
+                        //if first row and cell is wall down
+                        if (j == 0 && cell.HasFlag(MazeState.SOUTH))
+                        {
+                            var southWall = Instantiate(wallPrefab, transform) as Transform;
+                            southWall.position = position + new Vector3(0, 0, -size / 2);
+                            southWall.localScale = new Vector3(size, size / 2, southWall.localScale.z);
+                            southWall.name = "South Wall" + i + "," + j;
+                        }
+                    }
+
+                    //if cell is wall left instantiate left wall at size and rotation
+                    if (cell.HasFlag(MazeState.WEST))
+                    {
+                        var westWall = Instantiate(wallPrefab, transform) as Transform;
+                        westWall.position = position + new Vector3(-size / 2, 0, 0);
+                        westWall.eulerAngles = new Vector3(0, 90, 0); //rotating to be right/left
+                        westWall.localScale = new Vector3(size, size / 2, westWall.localScale.z);
+                        westWall.name = "West Wall" + i + "," + j;
+                    }
+
+                    //if on last collumn
+                    if (i == width - 1 && cell.HasFlag(MazeState.EAST))
+                    {
+                        var eastWall = Instantiate(wallPrefab, transform) as Transform;
+                        eastWall.position = position + new Vector3(size / 2, 0, 0);
+                        eastWall.eulerAngles = new Vector3(0, 90, 0); //rotating to be right/left
+                        eastWall.localScale = new Vector3(size, size / 2, eastWall.localScale.z);
+                        eastWall.name = "East Wall" + i + "," + j;
+                    }
+                    
+                  
+
+                    //Floor
+                    var floor = Instantiate(floorPrefab, transform) as Transform;
+                    floor.transform.Rotate(Vector3.right, 90f);
+                    floor.name = "Floor" + i + "," + j;
+                    floor.localScale = new Vector3(size, size, floor.localScale.z);
+                    floor.position = position + new Vector3(0, -size / 4, 0);
+                }
+            }
+        }
+
+
+        private void SpawnRandom()
+        {
+            //Spawn Coins
+            GetRandomPosition(coinAmountMax);
+
+            for (int i = 0; i < coinAmountMax; i++)
+            {
+                var coin = Instantiate(coinPrefab, transform) as Transform;
+                coin.position = randomPositions[i] + new Vector3(0, -size / 8, 0);
+            }
+
+            //Spawn enemies
+            GetRandomPosition(enemyAmountMax);
+
+            for (int i = 0; i < enemyAmountMax; i++)
+            {
+                var enemy = Instantiate(enemyPrefab, transform) as Transform;
+                enemy.position = randomPositions[i] + new Vector3(0, -size / 8, 0);
+            }
+
+            //Spawn items
+            GetRandomPosition(itemAmountMax);
+
+            for (int i = 0; i < itemAmountMax; i++)
+            {
+                var item = Instantiate(itemPrefab, transform) as Transform;
+                item.position = randomPositions[i] + new Vector3(0, -size / 8, 0);
+            }
+        }
+    }
+   
+}
