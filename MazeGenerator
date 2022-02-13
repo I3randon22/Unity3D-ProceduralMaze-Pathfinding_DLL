@@ -11,7 +11,7 @@ namespace MazeGenerator_DLL
     public enum MazeState
     {
         //0000 = No Walls
-        //1111 = Left, Right, Up, Down
+        //1111 = Left, Right, Down, Up
         NORTH = 1, //0001
         SOUTH = 2, //0010
         WEST = 4, //0100
@@ -21,8 +21,8 @@ namespace MazeGenerator_DLL
 
     /*
     WallState wallState = WallState.WEST | WallState.EAST; //1100
-    wallState |= WallState.NORTH; //this adds up to it -> 1101
-    wallState &= ~WallState.WEST; //removes left -> 1001
+    wallState |= WallState.NORTH; //this adds North to it -> 1101
+    wallState &= ~WallState.WEST; //removes West -> 1001
     */
 
     public struct Position
@@ -40,7 +40,6 @@ namespace MazeGenerator_DLL
 
     public static class MazeGenerator
     {
-
         public static MazeState[,] GenerateMaze(int width, int height) //2 Dimensional array function
         {
             MazeState[,] maze = new MazeState[width, height];
