@@ -1,0 +1,25 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Node
+{
+    public bool isWall { get; set; }
+    public Vector3 pos { get; set; }
+    public int gridX { get; set; }
+    public int gridY { get; set; }
+
+    public Node parent { get; set; }
+
+    public int gCost { get; set; }
+    public int hCost { get; set; }
+    public int FCost { get { return gCost + hCost; } }
+
+    public Node(bool n_isWall, Vector3 n_pos, int n_gridX, int n_gridY)
+    {
+        isWall = n_isWall;
+        pos = n_pos;
+        gridX = n_gridX;
+        gridY = n_gridY;
+    }
+}
