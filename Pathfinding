@@ -1,0 +1,115 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace MazeGenerator_DLL
+{
+    public class Pathfinding : MonoBehaviour
+    {
+        public MazeRenderer maze { get; set; }
+        public List<Node> path { get; set; }
+
+        public void FindPath(Vector3 seekerPos, Vector3 targetPos)
+        {
+            Node seekerNode = maze.CurrentNodePoint(seekerPos);
+            Node targetNode = maze.CurrentNodePoint(targetPos);
+
+            List<Node> openCell = new List<Node>();
+            HashSet<Node> closedCell = new HashSet<Node>();
+            openCell.Add(seekerNode);
+
+            //while there is still open cells
+            while (openCell.Count > 0)
+            {
+                //the current node is equal to the first element of openCell
+                Node currentNode = openCell[0];
+
+                //for every openCell
+                for (int i = 1; i < openCell.Count; i++)
+                {
+                    //A* pathfinding algorithm
+                    if (openCell[i].hCost < currentNode.hCost && openCell[i].FCost == currentNode.FCost || openCell[i].FCost < currentNode.FCost)
+                    {
+                        //curent node is equal to openCell
+                        currentNode = openCell[i];
+                    }
+                }
+
+                //remove that node from opencell list and add it to the closedcell list
+                openCell.Remove(currentNode);
+                closedCell.Add(currentNode);
+
+                //if the current node is now equal to the target node e.g. the enemy, then go to the PreviousPaths function and exit the while statement
+                if (currentNode == targetNode)
+                {
+                    PreviousPaths(seekerNode, targetNode);
+                    return;
+                }
+
+                //for every neighbour node in GetNeighbours list
+                foreach (Node neighbour in maze.GetNeighbours(currentNode))
+                {
+                    //if it is a wall or is in the closedCell list or if currentnode isWall then go to next iteration 
+                    if (neighbour.isWall || closedCell.Contains(neighbour) || currentNode.isWall)
+                    {
+                        continue;
+                    }
+
+                    //gCost + (14Y + 10(X-Y) distance between currentNode and neighbour)
+                    int moveCostNeigbour = currentNode.gCost + GetDistance(currentNode, neighbour);
+
+                    //if the neighbours move cost is smaller than the gcost or opencell list does not contain the neighbour
+                    if (moveCostNeigbour < neighbour.gCost || !openCell.Contains(neighbour))
+                    {
+                        //set the gcost to the neighbours move cost and hcost to the distance between neighbour and targetNode
+                        //set neighbours parent to the currentNode (allows to go to the next cell)
+                        neighbour.gCost = moveCostNeigbour;
+                        neighbour.hCost = GetDistance(neighbour, targetNode);
+                        neighbour.parent = currentNode;
+
+                        //if the openCell does not contain neighbour element then add it.
+                        if (!openCell.Contains(neighbour))
+                        {
+                            openCell.Add(neighbour);
+                        }
+                    }
+                }
+            }
+        }
+
+        void PreviousPaths(Node start, Node finish)
+        {
+            List<Node> previousNodes = new List<Node>();
+            Node currentNode = finish;
+
+            while (currentNode != start)
+            {
+                //add all nodes to previous nodes apart from the start node and set that node to the parent node
+                previousNodes.Add(currentNode);
+                currentNode = currentNode.parent;
+            }
+            //reverse the list as it was backwards
+            previousNodes.Reverse();
+            
+            //path is now equal to previousNode
+            maze.path = previousNodes;
+            path = previousNodes;
+        }
+
+        //Get Distance Algorithm (14Y + 10(X-Y))
+        int GetDistance(Node a, Node b)
+        {
+            int distanceX = Mathf.Abs(a.gridX - b.gridX);
+            int distanceY = Mathf.Abs(a.gridY - b.gridY);
+
+            if (distanceX > distanceY)
+            {
+                return 14 * distanceY + 10 * (distanceX - distanceY);
+            }
+            else
+            {
+                return 14 * distanceX + 10 * (distanceY - distanceX);
+            }
+        }
+    }
+}
