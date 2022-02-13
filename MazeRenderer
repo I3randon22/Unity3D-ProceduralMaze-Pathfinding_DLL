@@ -14,15 +14,19 @@ namespace MazeGenerator_DLL
         public float size { get; set; }
         public Transform wallPrefab { get; set; }
         public Transform floorPrefab { get; set; }
-        public Transform coinPrefab { get; set; }
-        public Transform itemPrefab { get; set; }
-        public Transform enemyPrefab { get; set; }
         public Vector3 startingPos { get; set; }
-        List<Vector3> positions;
-        List<Vector3> randomPositions;
-        public int coinAmountMax { get; set; }
-        public int enemyAmountMax { get; set; }
-        public int itemAmountMax { get; set; }
+        public List<Vector3> positions { get; set; }
+        public List<Vector3> randomPositions { get; set; }
+
+        Node[,] grid;
+        public float nodeRadius { get; set; }
+        public LayerMask isWallMask { get; set; }
+        public float nodeDiameter { get; set; }
+        public List<Node> path { get; set; }
+        public float offset { get; set; }
+
+        int gridSizeX;
+        int gridSizeY;
 
         public void DrawMaze()
         {
@@ -31,14 +35,28 @@ namespace MazeGenerator_DLL
             positions = new List<Vector3>();
             randomPositions = new List<Vector3>();
             Draw(maze);
-            startingPos = new Vector3((-width / 2) * size, 0, (-height / 2) * size);
-            SpawnRandom();
-
+            startingPos = new Vector3((-width / 2) * size, 0, (-height / 2) * size); // middle of maze
+            gridSizeX = width * 2 + 1;
+            gridSizeY = height * 2 + 1;
             nodeDiameter = nodeRadius * 2;
         }
 
         void Draw(MazeState[,] maze)
         {
+            //Grid// Only works with odd numbers?
+            grid = new Node[width * 2 + 1, height * 2 + 1];
+
+            for (int i = 0; i < width * 2 + 1; i++)
+            {
+                for (int j = 0; j < height * 2 + 1; j++)
+                {
+                    Vector3 position = new Vector3((-width + i) * size, 0, (-height + j) * size); //middle of maze
+
+
+                    grid[i, j] = new Node(false, position / 2, i, j);
+                }
+            }
+
             //Maze//
             for (int i = 0; i < width; i++)
             {
@@ -46,9 +64,9 @@ namespace MazeGenerator_DLL
                 {
                     var cell = maze[i, j];
                     var position = new Vector3((-width / 2 + i) * size, 0, (-height / 2 + j) * size); //middle of maze
-                    
+
                     //always keep the north wall free and prevent adding starting position to positions list(stops objects from spawning in starting position)
-                    if(position != startingPos)
+                    if (position != startingPos)
                     {
                         positions.Add(position);
 
@@ -93,8 +111,6 @@ namespace MazeGenerator_DLL
                         eastWall.localScale = new Vector3(size, size / 2, eastWall.localScale.z);
                         eastWall.name = "East Wall" + i + "," + j;
                     }
-                    
-                  
 
                     //Floor
                     var floor = Instantiate(floorPrefab, transform) as Transform;
@@ -102,40 +118,128 @@ namespace MazeGenerator_DLL
                     floor.name = "Floor" + i + "," + j;
                     floor.localScale = new Vector3(size, size, floor.localScale.z);
                     floor.position = position + new Vector3(0, -size / 4, 0);
+                    
+                    //Ceiling
+                    var ceiling = Instantiate(floorPrefab, transform) as Transform;
+                    ceiling.transform.Rotate(Vector3.right, 90f);
+                    ceiling.name = "Ceiling" + i + "," + j;
+                    ceiling.localScale = new Vector3(size, size, ceiling.localScale.z);
+                    ceiling.position = position + new Vector3(0, size / 4, 0);
+                    
+                }
+            }
+
+        }
+        public Node CurrentNodePoint(Vector3 pos)
+        {
+            float pointX = (pos.x / (5)) + (width);
+            float pointZ = (pos.z / (5)) + (height);
+
+            //converts pointX and pointY to the largest integer e.g. 10.7 would be 10 and clamps it to the size of the maze
+            int x = Mathf.FloorToInt(Mathf.Clamp(pointX + offset, 0, width * 2));
+            int z = Mathf.FloorToInt(Mathf.Clamp(pointZ + offset, 0, height * 2));
+
+            return grid[x, z];
+            
+        }
+
+        public List<Node> GetNeighbours(Node node)
+        {
+            List<Node> neighbours = new List<Node>();
+
+            for(int i = -1; i <= 1; i++)
+            {
+                for(int j = -1; j <= 1; j++)
+                {
+                    //if i and j is equal to 0 
+                    if (i == 0 && j == 0)
+                    {
+                        //skips to next iteration of for loop
+                        continue;
+                    }
+
+                    int checkX = node.gridX + i;
+                    int checkY = node.gridY + j;
+
+                    if(checkX >= 0 && checkX < gridSizeX && checkY >= 0 && checkY < gridSizeY)
+                    {
+                        neighbours.Add(grid[checkX, checkY]);
+                    }
+                }
+            }
+            return neighbours;
+        }
+
+        public void WallCheck()
+        {
+            if (grid != null)
+            {
+                //for each node within the grid
+                foreach (Node node in grid)
+                {
+                    //check if it is in collision with a object with a wallmask.
+                    if (Physics.CheckSphere(node.pos, nodeRadius * 2, isWallMask, QueryTriggerInteraction.UseGlobal))
+                    {
+                        node.isWall = true;
+                    }
                 }
             }
         }
 
-
-        private void SpawnRandom()
+        public void OnDrawGizmos()
         {
-            //Spawn Coins
-            GetRandomPosition(coinAmountMax);
+            //draw the maze 
+            Gizmos.DrawWireCube(transform.position, new Vector3(width * size, 1, height * size));
+            //if grid is not empty
+            if (grid != null)
+            {   
+                //for each node within the grid
+                foreach (Node node in grid)
+                {
+                    //check if it is in collision with a object with a wallmask.
+                    if (Physics.CheckSphere(node.pos, nodeRadius * 2, isWallMask, QueryTriggerInteraction.UseGlobal))
+                    {
+                        //if true turn gizmos colour to red and make the node isWall bool true;
+                        Gizmos.color = Color.red;
+                        node.isWall = true;
+                    }
+                    else //if false make colour white
+                    {
+                        Gizmos.color = Color.white;
+                    }
+                    //if path is not empty and contains the node turn the gizmos colour black.
+                    if(path != null)
+                    {
+                        if(path.Contains(node))
+                        {
+                            Gizmos.color = Color.black;
+                        }
+                    }
 
-            for (int i = 0; i < coinAmountMax; i++)
+                    //draw a gizmos cube
+                    Gizmos.DrawCube(node.pos, Vector3.one * (nodeDiameter - 0.1f));
+                }
+            } 
+        }
+
+        //Get random positions within the grid
+        public void GetRandomPosition(int amount)
+        {
+            //clear the list
+            randomPositions.Clear();
+            //loop through the amount given
+            for(int i = 0; i < amount; i++)
             {
-                var coin = Instantiate(coinPrefab, transform) as Transform;
-                coin.position = randomPositions[i] + new Vector3(0, -size / 8, 0);
-            }
-
-            //Spawn enemies
-            GetRandomPosition(enemyAmountMax);
-
-            for (int i = 0; i < enemyAmountMax; i++)
-            {
-                var enemy = Instantiate(enemyPrefab, transform) as Transform;
-                enemy.position = randomPositions[i] + new Vector3(0, -size / 8, 0);
-            }
-
-            //Spawn items
-            GetRandomPosition(itemAmountMax);
-
-            for (int i = 0; i < itemAmountMax; i++)
-            {
-                var item = Instantiate(itemPrefab, transform) as Transform;
-                item.position = randomPositions[i] + new Vector3(0, -size / 8, 0);
+                //create a vector 3 which is equal to a random position in the positions list
+                Vector3 pos = positions[UnityEngine.Random.Range(0, positions.Count)];
+                //remove that position to prevent other items respawning in the same position
+                positions.Remove(pos);
+                //add pos to the randomPositions list
+                randomPositions.Add(pos);
             }
         }
+
+      
     }
    
 }
