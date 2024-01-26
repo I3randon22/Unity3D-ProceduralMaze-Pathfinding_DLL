@@ -7,7 +7,7 @@ This repository hosts a Unity project featuring dynamically generated 3D mazes a
 The key components of this project are:
 
 1. **3D Procedural Maze Generator**: A dynamic maze generator that creates intricate and unique 3D mazes every time the game is played. 
-2. **A* Pathfinding Algorithm**: An implementation of the A* algorithm for efficient navigation through the maze, optimized for performance in the Unity3D environment.
+2. **AStar Pathfinding Algorithm**: An implementation of the A* algorithm for efficient navigation through the maze, optimized for performance in the Unity3D environment.
 
 ## Features
 
